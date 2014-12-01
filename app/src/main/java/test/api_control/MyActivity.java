@@ -20,31 +20,32 @@ import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
-
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
 
 public class MyActivity extends Activity {
+
     int DIALOG_TIME = 1;
     static String TAG = "Testing";
+    static Time now = new Time();
 
     // на прошедшее время, это просто для каркаса что бы развить в будущем
     TextView start_time; // начальное время
     TextView timer;// таймер для каждого звока
-    List<Date> time_list_most;//список времень будильника
     String output;//
     static String text = "ok";// штуковина для форматирования времни , внизу еесть объяснение
     private NotificationManager nm;
     static int chislo = 0;
-    List<Time> alar_t;
     static int myHour = 0;
     static int myMinute = 0;
-    static long curTime = System.currentTimeMillis();
+    Calendar calNow = Calendar.getInstance();
+    Calendar calSet = (Calendar) calNow.clone();
+    List<Calendar> timeList;
 
-    static Date myDate = new Date(curTime);//время будильника , внизу получит свои значения
-    static Date Last_d = new Date(curTime);
+
 
     public void onCreate(Bundle savedInstanceState) {
         Log.i(TAG, "Workoncre");
@@ -61,16 +62,12 @@ public class MyActivity extends Activity {
 
     }
 
-    public String formatTime(long millis)
-    //метод для таймера времени (форматирует милли секунды в часы и минуты)
-    // (статус:стырен)
-    // проверял по отдельности (все работает)
-
+  static   public String formatTime(long millis)
     {
         Log.i(TAG, "Workformat");
 
 
-        output = "";
+        String output = "";
         long seconds = millis / 1000;
         long minutes = seconds / 60;
         long hours = minutes / 60;
@@ -155,20 +152,20 @@ public class MyActivity extends Activity {
         public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
             Log.d("alarm_time", "start");
             Log.e(TAG, "Error alarm_time");
-            if (hourOfDay>12){
-                myHour = hourOfDay-12;
-            }else {
-            myHour = hourOfDay;}
-            myMinute = minute;
-            Time now = new Time();
-            now.setToNow();
-            now.hour=hourOfDay;
-            now.minute=minute;
-          //  now.set(0,minute,hourOfDay);
-          //  myDate.setMinutes(minute);
-           // myDate.setHours(myHour);
 
-            start_time.setText("Start:" +now.format("%d.%m.%Y %H.%M.%S"));
+            myHour = hourOfDay;
+            myMinute = minute;
+
+            calSet.set(Calendar.HOUR_OF_DAY, hourOfDay);
+            calSet.set(Calendar.MINUTE, minute);
+            calSet.set(Calendar.SECOND, 0);
+            calSet.set(Calendar.MILLISECOND, 0);
+
+            //  now.set(0,minute,hourOfDay);
+            //  myDate.setMinutes(minute);
+            // myDate.setHours(myHour);
+
+            start_time.setText("Start:" + calSet.getTime());
             showDialog(42);
             Log.d("alarm_time", "end");
 
@@ -182,36 +179,32 @@ public class MyActivity extends Activity {
         Log.e(TAG, "Error Start");
 
 
-        int mytestHour = myHour + ((90 + 5 + 10) * chislo - 10 + myMinute) / 60;
-        int mytestMinute = ((90 + 5 + 10) * chislo - 10 + myMinute) % 60;
-        Last_d.setMinutes(mytestMinute);
-        Last_d.setHours(mytestHour);
-        String string1 = "" + mytestHour;
+
         Log.e(TAG, "Error Start");
-         Date curDate = new Date(System.currentTimeMillis());//  время устройство
-        curDate.setHours(curDate.getHours()-12);
 
 
-        if (curDate.getTime() > Last_d.getTime()) {
-            Toast.makeText(this, "cur" + formatTime(curDate.getTime()), Toast.LENGTH_SHORT).show();
 
-            new Intent(getApplicationContext(), MyActivity.class);
+        if (back_time_list(myHour,myMinute,chislo).size() == 0) {
+
+
+            Intent refresh = new Intent(this, MyActivity.class);
+            startActivity(refresh);
+            this.finish(); //
 
 
             Toast.makeText(this, "please write current time", Toast.LENGTH_SHORT).show();
         } else {
 
 
-            time_list_most = adventure_time(myHour, myMinute, chislo,curDate);// список времен звонков
+            // список времен звонков
             Log.e(TAG, "Error Start");
 
-            time_calcul(time_list_most);//метод для звонка
+            time_calcul(back_time_list(myHour, myMinute, chislo));//метод для звонка
             Log.e(TAG, "Error Start");
         }
     }
 
-
-    public void time_calcul(final List<Date> list)
+    public void time_calcul(final List<Calendar> list)
     //вычисление и подача сигнала сервису уведомленя
     // н совсем понятно работает ли корректно
     {
@@ -229,83 +222,102 @@ public class MyActivity extends Activity {
         } else {
             Log.i(TAG, "Work");
             Log.e(TAG, "Error time_calcul");
+            Calendar myDate = Calendar.getInstance();
 
-            long ch = list.get(0).getTime();
+            long ch = list.get(0).getTimeInMillis() -  myDate.getTimeInMillis() ;
 
-            java.text.DateFormat dateFormat =
-                    android.text.format.DateFormat.getDateFormat(getApplicationContext());
-            Toast.makeText(this, "time now" + dateFormat.format(list.get(0).getTime()), Toast.LENGTH_SHORT).show();
-            AlarmManager am =  (AlarmManager)(this.getSystemService( Context.ALARM_SERVICE ));
-            PendingIntent pintent = PendingIntent.getBroadcast(this, 0, new Intent(getApplicationContext(), MyService.class), 0);
-            am.set(AlarmManager.RTC, list.get(0).getTime(),pintent);
-            list.remove(0);
-            time_calcul(list);
-//            new CountDownTimer(ch, 1000) {
-//
-//                public void onTick(long millisUntilFinished) {
-//                    timer.setText(formatTime(millisUntilFinished));
-//
-//
-//                }
-//
-//                public void onFinish() {
-//
-//                    startService(new Intent(getApplicationContext(), MyService.class));
-//                    //класс для возврата из уведомления в основной активити (реализован: скоро покажу)
-//                    list.remove(0);
-//                    time_calcul(list);
-//                }
-//            }.start();
+
+        //    Toast.makeText(this, "time now" + formatTime(dates.get(0).getTime()), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "time now" + formatTime(myDate.getTimeInMillis()), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "time set" + formatTime(ch), Toast.LENGTH_SHORT).show();
+
+         new CountDownTimer(ch, 1000) {
+
+                public void onTick(long millisUntilFinished) {
+                    timer.setText(formatTime(millisUntilFinished));
+
+
+                }
+
+                public void onFinish() {
+
+                    startService(new Intent(getApplicationContext(), MyService.class));
+                    //класс для возврата из уведомления в основной активити (реализован: скоро покажу)
+                    list.remove(0);
+                    time_calcul(list);
+                }
+            }.start();
 
         }
     }
 
 
-      public List<Date> adventure_time(int MyHour, int Myminute, int quant, Date trudate)
-    //конверт минуты в милли секунды и количество пар
-    // проверял по отдельности (нобез массива (все работало)
-    {
-        List<Date> dates = new ArrayList<Date>();
+
+    private List<Calendar> back_time_list( int sethours, int setminute, int mquant) {
+        Calendar mcalNow = Calendar.getInstance();
+        Calendar mcalSet = (Calendar) mcalNow.clone();
+
+        mcalSet.set(Calendar.HOUR_OF_DAY, sethours);
+        mcalSet.set(Calendar.MINUTE, setminute);
+        mcalSet.set(Calendar.SECOND, 0);
+        mcalSet.set(Calendar.MILLISECOND, 0);
+
+        List<String> mTime_list = new ArrayList<String>();
+        List<Calendar> quasi_date = new ArrayList<Calendar>();
 
 
-        Date first_time = new Date(System.currentTimeMillis());
-        //  Toast.makeText(this, "first_time" + formatTime(first_time.getHours()), Toast.LENGTH_SHORT).show();
 
-        first_time.setMinutes(Myminute);
-        first_time.setHours(MyHour);
-        dates.add((Date)first_time.clone());
 
-        for (int i = 0; i < quant; i++) {
 
-            first_time.setMinutes(first_time.getMinutes() + 45);
+        long util;
 
-            dates.add( (Date) first_time.clone());
 
-            first_time.setMinutes(first_time.getMinutes() + 5);
-            dates.add((Date) first_time.clone());
-            first_time.setMinutes(first_time.getMinutes() + 45);
-            //   Toast.makeText(this, "time" + formatTime(dates.get(0).getTime()), Toast.LENGTH_SHORT ).show();
-            dates.add((Date) first_time.clone());
-            //   Toast.makeText(this, "time" + formatTime(dates.get(0).getTime()), Toast.LENGTH_SHORT ).show();
-            if (i != quant-1) {
-                first_time.setMinutes(first_time.getMinutes() + 10);
-                dates.add((Date) first_time.clone());
 
+
+        quasi_date.add((Calendar) mcalSet.clone());
+
+
+        for (int i = 0; i < mquant; i++) { //add alarm_time in  list
+
+
+            mcalSet.add(Calendar.MINUTE, +5);
+
+            quasi_date.add((Calendar)mcalSet.clone());
+            mcalSet.add(Calendar.MINUTE, +1);
+
+            quasi_date.add((Calendar)mcalSet.clone());
+            mcalSet.add(Calendar.MINUTE, +5);
+
+            quasi_date.add((Calendar)mcalSet.clone());
+            if (i < mquant-1) { //add large break time
+                mcalSet.add(Calendar.MINUTE, +1);
+
+                quasi_date.add((Calendar)mcalSet.clone());
 
             }
-            //     Toast.makeText(this, "first_time" + formatTime(first_time.getTime()), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,quasi_date.get(quasi_date.size()-1).getTime().toString(),Toast.LENGTH_SHORT);
+
+
         }
+
+
+
+
+
+
         int i = 0;
-        while (i<dates.size()){
-            if (trudate.getTime()>dates.get(0).getTime()){
-                dates.remove(0);
+        while (i<quasi_date.size()){
+            if (mcalNow.compareTo(quasi_date.get(0))<0){
+                quasi_date.remove(0);
                 i++;
             }
             else {
                 break;
             }
         }
-        return dates;
-    };
+        return quasi_date;    };
+
+
+    ;
 
 }
